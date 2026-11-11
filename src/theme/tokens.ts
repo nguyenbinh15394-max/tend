@@ -1,30 +1,54 @@
 /**
- * Design tokens. Placeholder values until they are synced with the hi-fi
- * Figma file; components only read from here, so swapping values is enough.
+ * Design tokens from the Tend hi-fi (Round 1 + 2): clinical white, a calm teal
+ * for trust and action, coral reserved for things that need a person, amber
+ * for "soon", green for "done". One typeface: Atkinson Hyperlegible Next (the original has no Vietnamese glyphs).
  */
 
 export const color = {
-  bg: '#FBF8F3',
+  // Surfaces
+  bg: '#F4F7F6',
   surface: '#FFFFFF',
-  ink: '#1F2421',
-  inkMuted: '#5B635E',
-  line: '#E4DED3',
-  accent: '#2F6B4F',
+  surfaceMuted: '#EEF1F0',
+  line: '#E2E7E5',
+  border: '#CFD8D5',
+
+  // Text
+  ink: '#15201E',
+  inkMuted: '#5B6764',
+  inkSubtle: '#9AA5A2',
+
+  // Teal · action
+  accent: '#1D6F68',
+  accentStrong: '#12524C',
+  accentSoft: '#E6F2F0',
   accentInk: '#FFFFFF',
-  accentSoft: '#E5EFE9',
-  danger: '#B3261E',
+
+  // Coral · needs a person
+  coral: '#C4452C',
+  coralSoft: '#FBECE8',
+
+  // Amber · soon
+  amber: '#A8660B',
+  amberStrong: '#6B4206',
+  amberSoft: '#FDF3E1',
+
+  // Green · done
+  green: '#2F7D4A',
+  greenSoft: '#E7F4EC',
+
+  danger: '#C4452C',
 } as const;
 
 export const font = {
-  regular: 'AtkinsonHyperlegible_400Regular',
-  bold: 'AtkinsonHyperlegible_700Bold',
+  regular: 'AtkinsonHyperlegibleNext_400Regular',
+  bold: 'AtkinsonHyperlegibleNext_700Bold',
 } as const;
 
-export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 } as const;
+export const space = { xs: 4, sm: 8, md: 16, lg: 22, xl: 32, xxl: 48 } as const;
 
-export const radius = { md: 12, lg: 20 } as const;
+export const radius = { md: 12, lg: 22, xl: 24 } as const;
 
-/** Caregiver web app: a normal, dense-enough productivity UI. */
+/** Caregiver web app. */
 export const caregiver = {
   title: 28,
   text: 16,
@@ -35,13 +59,15 @@ export const caregiver = {
 
 /**
  * Parent mode is a separate product: never below 19px type, never below
- * 64px touch targets.
+ * 64px touch targets. Big actions are 96px tall with 26px labels.
  */
 export const parent = {
   title: 34,
   text: 22,
   small: 19,
   touch: 72,
+  action: 96,
+  actionLabel: 26,
   maxWidth: 560,
 } as const;
 

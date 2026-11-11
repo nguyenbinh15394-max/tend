@@ -1,8 +1,8 @@
 import {
-  AtkinsonHyperlegible_400Regular,
-  AtkinsonHyperlegible_700Bold,
+  AtkinsonHyperlegibleNext_400Regular,
+  AtkinsonHyperlegibleNext_700Bold,
   useFonts,
-} from '@expo-google-fonts/atkinson-hyperlegible';
+} from '@expo-google-fonts/atkinson-hyperlegible-next';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -27,7 +27,7 @@ export default function RootLayout() {
  */
 function Routes() {
   const { mode } = useSession();
-  const [fontsLoaded] = useFonts({ AtkinsonHyperlegible_400Regular, AtkinsonHyperlegible_700Bold });
+  const [fontsLoaded] = useFonts({ AtkinsonHyperlegibleNext_400Regular, AtkinsonHyperlegibleNext_700Bold });
   const ready = fontsLoaded && mode !== 'loading';
 
   useEffect(() => {
