@@ -38,6 +38,22 @@ Progress is tracked in [`buildlog.json`](buildlog.json) and shown live on the ca
 
 Schema, row-level security and tests live in [`supabase/`](supabase/README.md). Run the RLS tests with `npm run test:db`.
 
+## App structure
+
+One Expo app, two products. Which one opens depends on who is holding it:
+
+- `src/app/(caregiver)/`: the caregiver app (Today, Supplies, Appointments, Family). Email sign-in with a one-time code.
+- `src/app/parent/`: parent mode. The phone signs in anonymously and is paired once with a code from a caregiver.
+- `src/app/_layout.tsx`: protected routes switch between the two based on the session.
+- `src/theme/tokens.ts`: design tokens. Parent mode never goes below 19px type or 64px touch targets.
+
 ## Local setup
 
-Copy `.env.example` to `.env` and fill in your Supabase project URL and anon key. Never commit `.env` or the `service_role` key.
+```bash
+npm install
+cp .env.example .env   # add your Supabase project URL and anon key
+npm run web            # caregiver web app in the browser
+npm start              # Expo dev server for phones
+```
+
+Never commit `.env` or the `service_role` key.

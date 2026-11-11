@@ -31,6 +31,7 @@ npm run test:db
 
 1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard). Keep the database password in a password manager.
 2. **Authentication → Sign In / Providers**: keep Email on, and turn on **Allow anonymous sign-ins** (parent mode uses it).
+   **Authentication → Emails → Magic Link**: caregivers sign in with a 6-digit code, so add `{{ .Token }}` to the template body (for example `Your Tend code is {{ .Token }}`).
 3. Apply the migrations from this folder:
    ```bash
    npx supabase login
