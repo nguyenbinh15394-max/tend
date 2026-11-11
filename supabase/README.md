@@ -7,16 +7,17 @@ Postgres schema and row-level security for Tend, as Supabase migrations.
 | `migrations/…_core_schema.sql` | families, members (role + `can_order` / `can_book` / `can_health`), parents (with `consent`), supplies, appointments, readings |
 | `migrations/…_rls.sql` | Row-level security: each family sees only its own rows, writes need the matching permission, and the parent's consent is checked on every read and write |
 | `migrations/…_circle_and_pairing.sql` | `create_family`, invites + `accept_invite`, parent-phone pairing (`create_pairing_code`, `pair_device`), `set_consent`, Realtime |
-| `seed.sql` | Demo family for local development |
+| `migrations/…_match_hifi.sql` | Matches the hi-fi: consent as asked on first setup, medicines + doses, phone numbers and call order (`my_call_list`, `update_my_contact`) |
+| `seed.sql` | The hi-fi's demo family (Mr. Hòa, Linh, Nam, Mrs. Lan, Cousin Tú) for local development |
 | `tests/` | RLS tests that play the family story as real users |
 
 ## How the permissions work
 
 - **Owner**: everything, including inviting and editing the circle.
-- **Caregiver**: reads everything the parent shares; writes only where they hold `can_order` (supplies), `can_book` (appointments) or `can_health` (readings).
+- **Caregiver**: reads everything the parent shares; writes only where they hold `can_order` (supplies), `can_book` (appointments) or `can_health` (readings, medicines, marking doses).
 - **Viewer**: read only.
-- **Parent's phone**: no login. It signs in anonymously and is paired once with a 6-character code a caregiver generates (valid 15 minutes, single use). It always sees its own parent's record and can log readings.
-- **Consent**: `parents.consent` has `supplies`, `appointments` and `health` (health is off by default). Only the parent's paired phone can change it, through `set_consent()`. The column cannot be updated directly by anyone, owners included.
+- **Parent's phone**: no login. It signs in anonymously and is paired once with a 6-character code a caregiver generates (valid 15 minutes, single use). It always sees its own parent's record, can log readings and mark doses taken, and gets only the call list (names, phones, order) from the circle.
+- **Consent**: `parents.consent` has `medicines`, `appointments`, `health` (blood pressure readings) and `emergency_location`, the four questions on the parent's first setup. Health and location are off by default. Supplies are not gated: they are the family's logistics. Only the parent's paired phone can change it, through `set_consent()`. The column cannot be updated directly by anyone, owners included.
 
 ## Run the tests
 

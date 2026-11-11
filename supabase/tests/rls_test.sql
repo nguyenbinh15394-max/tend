@@ -244,19 +244,77 @@ set role authenticated;
 select tests.ok((select count(*) from public.readings) = 0, 'Ben still cannot: he has no can_health');
 reset role;
 
-select tests.login('00000000-0000-0000-0000-0000000000f1', true);
+-- Medicines and who to call ---------------------------------------------------------------
+
+select tests.login('00000000-0000-0000-0000-00000000000a');
 set role authenticated;
-select public.set_consent('supplies', false);
-select tests.ok((select count(*) from public.supplies) = 2, 'Mum still sees her supplies after hiding them');
+
+with m as (
+  insert into public.medicines (family_id, parent_id, name, instructions, times)
+  values (current_setting('test.fid')::uuid, current_setting('test.pid')::uuid,
+          'Metformin 500mg', '1 viên, sau ăn sáng', array['07:00', '19:00']::time[])
+  returning id
+)
+select set_config('test.med', (select id::text from m), false);
+
+select public.update_my_contact(current_setting('test.fid')::uuid, null, '+84 000 000 001');
+update public.members set call_order = 1 where user_id = auth.uid();
+update public.members set call_order = 2, phone = '+84 000 000 002' where display_name = 'Ben';
+select tests.ok((select count(*) from public.members where call_order is not null) = 2,
+  'Anna (owner) sets who Mum calls, and in what order');
 reset role;
 
 select tests.login('00000000-0000-0000-0000-00000000000b');
 set role authenticated;
-select tests.ok((select count(*) from public.supplies) = 0, 'Ben no longer sees supplies once Mum hides them');
+select tests.ok((select count(*) from public.medicines) = 1, 'Ben sees Mum''s medicines (shared by default)');
 select tests.refused(
-  $$insert into public.supplies (family_id, parent_id, name, every_days, next_due)
-    values (current_setting('test.fid')::uuid, current_setting('test.pid')::uuid, 'Vitamins', 30, current_date)$$,
-  'Ben cannot add supplies Mum has chosen not to share');
+  $$insert into public.medicines (family_id, parent_id, name, times)
+    values (current_setting('test.fid')::uuid, current_setting('test.pid')::uuid, 'Aspirin', array['08:00']::time[])$$,
+  'Ben cannot change the medicine list without can_health');
+update public.members set call_order = 1 where user_id = auth.uid();
+select tests.ok((select call_order from public.members where user_id = auth.uid()) = 2,
+  'Ben cannot move himself up the call order');
+select public.update_my_contact(current_setting('test.fid')::uuid, 'Ben N.', '+84 000 000 022');
+select tests.ok((select phone from public.members where user_id = auth.uid()) = '+84 000 000 022',
+  'Ben updates his own phone number');
+reset role;
+
+select tests.login('00000000-0000-0000-0000-0000000000f1', true);
+set role authenticated;
+select tests.ok((select count(*) from public.medicines) = 1, 'Mum''s phone sees her medicines');
+insert into public.doses (family_id, parent_id, medicine_id, scheduled_for)
+values (current_setting('test.fid')::uuid, current_setting('test.pid')::uuid, current_setting('test.med')::uuid,
+        date_trunc('day', now()) + interval '7 hours');
+select tests.ok((select count(*) from public.doses) = 1, 'Mum taps "I''ve taken it"');
+select tests.ok((select display_name from public.my_call_list() limit 1) = 'Anna',
+  '"Call my children" starts with Anna');
+select tests.ok((select count(*) from public.my_call_list()) = 2, 'the call list has Anna, then Ben');
+select tests.ok((select count(*) from public.members) = 0,
+  'Mum''s phone cannot read the circle''s roles and permissions');
+select tests.refused($$select public.set_consent('supplies', false)$$, 'supplies are not a consent setting');
+select tests.ok((public.set_consent('medicines', false) ->> 'medicines') = 'false', 'Mum stops sharing medicines');
+select tests.ok((select count(*) from public.doses) = 1, 'Mum still sees her own doses');
+reset role;
+
+select tests.login('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select tests.ok((select count(*) from public.medicines) = 0, 'Ben no longer sees medicines once Mum hides them');
+select tests.ok((select count(*) from public.doses) = 0, 'Ben no longer sees doses either');
+select tests.ok((select count(*) from public.supplies) = 2, 'supplies stay visible: they are the family''s logistics');
+reset role;
+
+select tests.login('00000000-0000-0000-0000-00000000000a');
+set role authenticated;
+select tests.refused(
+  $$insert into public.doses (family_id, parent_id, medicine_id, scheduled_for)
+    values (current_setting('test.fid')::uuid, current_setting('test.pid')::uuid, current_setting('test.med')::uuid,
+            date_trunc('day', now()) + interval '19 hours')$$,
+  'even the owner cannot mark doses Mum has chosen not to share');
+reset role;
+
+select tests.login('00000000-0000-0000-0000-0000000000f2', true);
+set role authenticated;
+select tests.ok((select count(*) from public.my_call_list()) = 0, 'an unpaired phone gets no call list');
 reset role;
 
 -- A stranger's phone ---------------------------------------------------------------------
