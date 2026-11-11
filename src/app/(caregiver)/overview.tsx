@@ -1,11 +1,11 @@
 import { Body, NotBuiltYet, Screen, Title } from '@/components/ui';
 
-export default function Today() {
+export default function Overview() {
   return (
     <Screen>
-      <Title>Today</Title>
-      <Body muted>What needs doing for Mum and Dad, and who is on it.</Body>
-      <NotBuiltYet what="Due supplies and upcoming appointments, each with its owner, appear here." />
+      <Title>Overview</Title>
+      <Body muted>Your parent's week: what needs a person, and who owns each item.</Body>
+      <NotBuiltYet what="Needs a person, supplies, blood pressure, next check-up and today's medicines appear here." />
     </Screen>
   );
 }

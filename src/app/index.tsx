@@ -9,7 +9,7 @@ export default function Index() {
     case 'setup':
       return <Redirect href="/setup" />;
     case 'caregiver':
-      return <Redirect href="/today" />;
+      return <Redirect href="/overview" />;
     case 'parent':
       return <Redirect href="/parent" />;
     case 'pairing':
