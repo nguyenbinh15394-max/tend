@@ -1,0 +1,11 @@
+{
+  "name": "tend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:db": "node supabase/tests/run.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  }
+}
