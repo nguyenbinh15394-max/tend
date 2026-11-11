@@ -1,7 +1,10 @@
 /**
  * Design tokens from the Tend hi-fi (Round 1 + 2): clinical white, a calm teal
  * for trust and action, coral reserved for things that need a person, amber
- * for "soon", green for "done". One typeface: Atkinson Hyperlegible Next (the original has no Vietnamese glyphs).
+ * for "soon", green for "done". One typeface: Lexend. The hi-fi uses Atkinson Hyperlegible, but neither
+ * Atkinson nor Atkinson Next ships Vietnamese glyphs (ổ, ớ, ọ, ơ, ư, ạ), and
+ * parent mode is Vietnamese first. Lexend has full Vietnamese coverage and was
+ * designed for reading proficiency.
  */
 
 export const color = {
@@ -40,8 +43,8 @@ export const color = {
 } as const;
 
 export const font = {
-  regular: 'AtkinsonHyperlegibleNext_400Regular',
-  bold: 'AtkinsonHyperlegibleNext_700Bold',
+  regular: 'Lexend_400Regular',
+  bold: 'Lexend_700Bold',
 } as const;
 
 export const space = { xs: 4, sm: 8, md: 16, lg: 22, xl: 32, xxl: 48 } as const;

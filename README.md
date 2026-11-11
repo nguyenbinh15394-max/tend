@@ -7,7 +7,7 @@ Caring for an ageing parent is usually shared across siblings, partners and neig
 ## Two surfaces, one record
 
 - **Caregiver web app** — for the adult children. Recurring supplies, appointments (book one and assign a driver), a health log, and the family circle with roles and permissions.
-- **Parent mobile mode** — a separate, radically simple product for the parent. No login, three actions, large type (Atkinson Hyperlegible, 19px+), touch targets of 64px or more.
+- **Parent mobile mode** — a separate, radically simple product for the parent. No login, three actions, large type (Lexend, 19px+), touch targets of 64px or more.
 
 ## Principles
 
@@ -42,10 +42,10 @@ Schema, row-level security and tests live in [`supabase/`](supabase/README.md). 
 
 One Expo app, two products. Which one opens depends on who is holding it:
 
-- `src/app/(caregiver)/`: the caregiver app (Today, Supplies, Appointments, Family). Email sign-in with a one-time code.
+- `src/app/(caregiver)/`: the caregiver app (Overview, Supplies, Appointments, Health log, Medicines, Family). Email sign-in with a one-time code.
 - `src/app/parent/`: parent mode. The phone signs in anonymously and is paired once with a code from a caregiver.
 - `src/app/_layout.tsx`: protected routes switch between the two based on the session.
-- `src/theme/tokens.ts`: design tokens. Parent mode never goes below 19px type or 64px touch targets.
+- `src/theme/tokens.ts`: design tokens from the hi-fi. Parent mode never goes below 19px type or 64px touch targets. Type is Lexend: Atkinson Hyperlegible, used in the hi-fi, has no Vietnamese glyphs.
 
 ## Local setup
 
