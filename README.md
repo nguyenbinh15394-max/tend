@@ -42,7 +42,7 @@ Schema, row-level security and tests live in [`supabase/`](supabase/README.md). 
 
 One Expo app, two products. Which one opens depends on who is holding it:
 
-- `src/app/(caregiver)/`: the caregiver app (Overview, Supplies, Appointments, Health log, Medicines, Family). Email sign-in with a one-time code.
+- `src/app/(caregiver)/`: the caregiver app (Overview, Supplies, Appointments, Health log, Medicines, Family). Email sign-in with a magic link.
 - `src/app/parent/`: parent mode. The phone signs in anonymously and is paired once with a code from a caregiver.
 - `src/app/_layout.tsx`: protected routes switch between the two based on the session.
 - `src/theme/tokens.ts`: design tokens from the hi-fi. Parent mode never goes below 19px type or 64px touch targets. Type is Lexend: Atkinson Hyperlegible, used in the hi-fi, has no Vietnamese glyphs.
