@@ -3,7 +3,8 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { Onboarding } from '@/components/onboarding';
 import { FamilyProvider, useFamily } from '@/lib/family';
-import { color, font } from '@/theme/tokens';
+import { TopNav } from '@/components/top-nav';
+import { color } from '@/theme/tokens';
 
 export default function CaregiverLayout() {
   return (
@@ -28,16 +29,7 @@ function Gate() {
   if (!family || !parent) return <Onboarding />;
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: color.accentStrong,
-        tabBarInactiveTintColor: color.inkMuted,
-        tabBarActiveBackgroundColor: color.accentSoft,
-        tabBarStyle: { backgroundColor: color.surface, borderTopColor: color.line },
-        tabBarLabelStyle: { fontFamily: font.bold, fontSize: 13 },
-        tabBarIcon: () => null,
-      }}>
+    <Tabs tabBar={(props) => <TopNav {...props} />} screenOptions={{ headerShown: false, tabBarPosition: 'top' }}>
       <Tabs.Screen name="overview" options={{ title: 'Overview' }} />
       <Tabs.Screen name="supplies" options={{ title: 'Supplies' }} />
       <Tabs.Screen name="appointments" options={{ title: 'Appointments' }} />
