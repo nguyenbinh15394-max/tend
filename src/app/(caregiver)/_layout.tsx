@@ -1,9 +1,32 @@
 import { Tabs } from 'expo-router/js-tabs';
+import { ActivityIndicator, View } from 'react-native';
 
+import { Onboarding } from '@/components/onboarding';
+import { FamilyProvider, useFamily } from '@/lib/family';
 import { color, font } from '@/theme/tokens';
 
-/** The six caregiver modules from the hi-fi. */
 export default function CaregiverLayout() {
+  return (
+    <FamilyProvider>
+      <Gate />
+    </FamilyProvider>
+  );
+}
+
+/** No family or no parent yet → onboarding. Otherwise the six modules from the hi-fi. */
+function Gate() {
+  const { loading, family, parent } = useFamily();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: color.bg }}>
+        <ActivityIndicator color={color.accent} />
+      </View>
+    );
+  }
+
+  if (!family || !parent) return <Onboarding />;
+
   return (
     <Tabs
       screenOptions={{
