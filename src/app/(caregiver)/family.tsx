@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Avatar, Badge, Card, Chip, CodeBox, Heading, Row, Small, Spread, Strong, Toggle } from '@/components/kit';
-import { Body, Button, ErrorText, Field, Screen, Title } from '@/components/ui';
+import { Chip, CodeBox, Row } from '@/components/kit';
+import { Grid, Page, PageHeader, Panel, Pill, t } from '@/components/layout';
+import { ErrorText, Field } from '@/components/ui';
 import { useFamily, useLive } from '@/lib/family';
 import { useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import type { ConsentArea, Invite, Member, ParentDevice, Role } from '@/lib/types';
-import { space } from '@/theme/tokens';
+import { color, font } from '@/theme/tokens';
 
 const PERMS = [
   { key: 'can_order', label: 'Order' },
@@ -22,55 +23,81 @@ const CONSENT: { key: ConsentArea; label: string }[] = [
   { key: 'emergency_location', label: 'Location, emergencies only' },
 ];
 
-/** Flow 3 · Family circle: roles enforced by row-level security (hi-fi 2e). */
+const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', caregiver: 'Caregiver', viewer: 'View only' };
+
+/** Flow 3 · Family circle, hi-fi 2e: who can do what, and what the parent shares. */
 export default function Family() {
   const { family, me, members, parent, reload } = useFamily();
   const { signOut, session } = useSession();
+  const [inviting, setInviting] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
   const isOwner = me?.role === 'owner';
   const canManage = me?.role === 'owner' || me?.role === 'caregiver';
 
   if (!family || !me || !parent) return null;
 
   return (
-    <Screen>
-      <View>
-        <Small>
-          {parent.display_name} · {family.name}
-        </Small>
-        <Title>Family circle</Title>
+    <Page aside={<ConsentPanel parentName={parent.display_name} consent={parent.consent} chosen={!!parent.consent_updated_at} />}>
+      <PageHeader
+        eyebrow={`${parent.display_name} · ${family.name}`}
+        title="Family circle"
+        actions={isOwner ? <Pill label={inviting ? 'Close' : 'Invite someone'} variant={inviting ? 'outline' : 'primary'} onPress={() => setInviting(!inviting)} /> : null}
+      />
+
+      {inviting ? <InviteForm familyId={family.id} onDone={() => setInviting(false)} /> : null}
+
+      <View style={styles.table}>
+        <View style={styles.thead}>
+          <Text style={[styles.th, { flex: 1 }]}>Member</Text>
+          {['Order', 'Book', 'Health', 'Admin'].map((h) => (
+            <Text key={h} style={[styles.th, styles.cell]}>
+              {h}
+            </Text>
+          ))}
+        </View>
+        {members.map((m) => (
+          <MemberRow
+            key={m.id}
+            member={m}
+            isMe={m.id === me.id}
+            editable={isOwner && m.id !== me.id}
+            open={open === m.id}
+            onToggle={() => setOpen(open === m.id ? null : m.id)}
+            onChange={reload}
+          />
+        ))}
       </View>
 
-      <Card>
-        <Heading>Members</Heading>
-        <Small>Owners can do everything. Everyone else gets only what is switched on. The database enforces this.</Small>
-        {members.map((m) => (
-          <MemberRow key={m.id} member={m} isMe={m.id === me.id} editable={isOwner && m.id !== me.id} onChange={reload} />
-        ))}
-      </Card>
+      {isOwner ? <PendingInvites familyId={family.id} /> : null}
 
-      <MyContact familyId={family.id} me={me} email={session?.user.email} onChange={reload} />
+      <Grid min={320}>
+        <MyContact familyId={family.id} me={me} email={session?.user.email} onChange={reload} onSignOut={signOut} />
+        {canManage ? <ParentPhone parentId={parent.id} parentName={parent.display_name} /> : null}
+      </Grid>
+    </Page>
+  );
+}
 
-      {isOwner ? <Invites familyId={family.id} /> : null}
-
-      <Card>
-        <Heading>What {parent.display_name} agreed to share</Heading>
-        <Small>Set on {parent.display_name}'s phone. Only they can change these, from parent mode.</Small>
-        {parent.consent_updated_at ? (
-          CONSENT.map((c) => (
-            <Spread key={c.key}>
-              <Body>{c.label}</Body>
-              <Badge label={parent.consent[c.key] ? 'Shared' : 'Not shared'} tone={parent.consent[c.key] ? 'green' : 'neutral'} />
-            </Spread>
-          ))
-        ) : (
-          <Small tone="amber">Not chosen yet. {parent.display_name} chooses on their phone, right after it's set up.</Small>
-        )}
-      </Card>
-
-      {canManage ? <ParentPhone parentId={parent.id} parentName={parent.display_name} /> : null}
-
-      <Button variant="secondary" label="Sign out" onPress={signOut} />
-    </Screen>
+function ConsentPanel({ parentName, consent, chosen }: { parentName: string; consent: Record<ConsentArea, boolean>; chosen: boolean }) {
+  return (
+    <View style={{ gap: 16, flexGrow: 1 }}>
+      <Text style={styles.kicker}>{parentName}&apos;s consent</Text>
+      <Text style={styles.asideTitle}>What {parentName} agreed to share</Text>
+      <Text style={[t.muted, { lineHeight: 21 }]}>Set on {parentName}&apos;s phone during setup. Only they can change these, from parent mode.</Text>
+      {chosen ? (
+        CONSENT.map((c) => (
+          <View key={c.key} style={styles.consentRow}>
+            <Text style={t.body}>{c.label}</Text>
+            <Text style={[styles.state, consent[c.key] ? styles.shared : styles.notShared]}>{consent[c.key] ? 'Shared' : 'Not shared'}</Text>
+          </View>
+        ))
+      ) : (
+        <Text style={[t.muted, { color: color.amberStrong }]}>Not chosen yet. {parentName} chooses on their phone, right after it&apos;s set up.</Text>
+      )}
+      <View style={styles.policy}>
+        <Text style={styles.code}>{'policy "read readings with health consent"\nusing (is_member(family_id)\n  and parent_allows(parent_id, \'health\'))'}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -78,14 +105,19 @@ function MemberRow({
   member: m,
   isMe,
   editable,
+  open,
+  onToggle,
   onChange,
 }: {
   member: Member;
   isMe: boolean;
   editable: boolean;
+  open: boolean;
+  onToggle: () => void;
   onChange: () => Promise<void>;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const owner = m.role === 'owner';
 
   async function update(patch: Partial<Member>) {
     if (!supabase) return;
@@ -102,83 +134,157 @@ function MemberRow({
     await onChange();
   }
 
-  const setRole = (role: Role) =>
-    update(role === 'viewer' ? { role, can_order: false, can_book: false, can_health: false } : { role });
+  const setRole = (role: Role) => update(role === 'viewer' ? { role, can_order: false, can_book: false, can_health: false } : { role });
+  const sub = [ROLE_LABEL[m.role], m.phone, m.call_order ? `called #${m.call_order}` : null].filter(Boolean).join(' · ');
 
   return (
-    <View style={{ gap: space.sm, paddingVertical: space.sm }}>
-      <Row>
-        <Avatar name={m.display_name} tone={m.role === 'owner' ? 'accent' : 'neutral'} />
-        <View style={{ flex: 1, minWidth: 160 }}>
-          <Strong>
-            {m.display_name}
-            {isMe ? ' (you)' : ''}
-          </Strong>
-          <Small>
-            {m.phone ? m.phone : 'No phone yet'}
-            {m.call_order ? ` · called #${m.call_order}` : ''}
-          </Small>
+    <View style={styles.row}>
+      <View style={styles.rowMain}>
+        <Pressable onPress={editable ? onToggle : undefined} disabled={!editable} accessibilityRole={editable ? 'button' : undefined} accessibilityState={{ expanded: open }} style={styles.who}>
+          <View style={[styles.avatar, owner ? { backgroundColor: color.accent } : null]}>
+            <Text style={[styles.avatarText, owner ? { color: '#fff' } : null]}>{m.display_name.trim().charAt(0).toUpperCase()}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name} numberOfLines={1}>
+              {m.display_name}
+              {isMe ? ' (you)' : ''}
+            </Text>
+            <Text style={t.small} numberOfLines={1}>
+              {sub}
+            </Text>
+          </View>
+        </Pressable>
+        {PERMS.map((p) => (
+          <View key={p.key} style={styles.cell}>
+            <Switch
+              accessibilityLabel={`${m.display_name} can ${p.label.toLowerCase()}`}
+              value={owner || m[p.key]}
+              disabled={!editable || owner || m.role === 'viewer'}
+              onValueChange={(v) => update({ [p.key]: v })}
+              trackColor={{ true: color.accent, false: color.border }}
+              thumbColor="#fff"
+              {...({ activeThumbColor: '#fff' } as object)}
+            />
+          </View>
+        ))}
+        <View style={styles.cell}>
+          <Switch
+            accessibilityLabel={`${m.display_name} is an owner`}
+            value={owner}
+            disabled={!editable}
+            onValueChange={(v) => setRole(v ? 'owner' : 'caregiver')}
+            trackColor={{ true: color.accent, false: color.border }}
+            thumbColor="#fff"
+            {...({ activeThumbColor: '#fff' } as object)}
+          />
         </View>
-        <Badge label={m.role} tone={m.role === 'owner' ? 'accent' : 'neutral'} />
-      </Row>
+      </View>
 
-      {editable ? (
-        <>
+      {open && editable ? (
+        <View style={styles.drawer}>
           <Row>
-            {(['owner', 'caregiver', 'viewer'] as Role[]).map((r) => (
-              <Chip key={r} label={r} selected={m.role === r} onPress={() => setRole(r)} />
+            <Text style={t.muted}>Role</Text>
+            {(['caregiver', 'viewer'] as Role[]).map((r) => (
+              <Chip key={r} label={ROLE_LABEL[r]} selected={m.role === r} onPress={() => setRole(r)} />
             ))}
           </Row>
-          {m.role !== 'owner' ? (
-            <Row gap={space.md}>
-              {PERMS.map((p) => (
-                <Toggle
-                  key={p.key}
-                  label={p.label}
-                  value={m[p.key]}
-                  disabled={m.role === 'viewer'}
-                  onChange={(v) => update({ [p.key]: v })}
-                />
-              ))}
-            </Row>
-          ) : null}
           <Row>
-            <Small>Call order for the parent:</Small>
+            <Text style={t.muted}>{`Call order on the parent's phone`}</Text>
             {[null, 1, 2, 3].map((n) => (
               <Chip key={String(n)} label={n ? `#${n}` : 'Not called'} selected={m.call_order === n} onPress={() => update({ call_order: n })} />
             ))}
           </Row>
-          <Row>
-            <Button variant="secondary" label={`Remove ${m.display_name}`} onPress={remove} />
-          </Row>
-        </>
-      ) : (
-        <Row gap={space.md}>
-          {PERMS.map((p) => (
-            <Badge
-              key={p.key}
-              label={`${p.label}: ${m.role === 'owner' || m[p.key] ? 'yes' : 'no'}`}
-              tone={m.role === 'owner' || m[p.key] ? 'green' : 'neutral'}
-            />
-          ))}
-        </Row>
-      )}
+          <Pill small variant="outline" label={`Remove ${m.display_name}`} onPress={remove} />
+        </View>
+      ) : null}
       <ErrorText>{error}</ErrorText>
     </View>
   );
 }
 
-function MyContact({
-  familyId,
-  me,
-  email,
-  onChange,
-}: {
-  familyId: string;
-  me: Member;
-  email?: string;
-  onChange: () => Promise<void>;
-}) {
+function InviteForm({ familyId, onDone }: { familyId: string; onDone: () => void }) {
+  const [role, setRole] = useState<Role>('caregiver');
+  const [perms, setPerms] = useState({ can_order: true, can_book: true, can_health: false });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function create() {
+    if (!supabase) return;
+    setBusy(true);
+    setError(null);
+    const p = role === 'caregiver' ? perms : { can_order: false, can_book: false, can_health: false };
+    const { error } = await supabase.from('invites').insert({ family_id: familyId, role, ...p });
+    setBusy(false);
+    if (error) setError(error.message);
+    else onDone();
+  }
+
+  return (
+    <Panel title="Invite someone">
+      <Text style={t.muted}>They sign in to Tend with their email, then enter the code. Codes work once and expire in 7 days.</Text>
+      <Row>
+        {(['caregiver', 'viewer', 'owner'] as Role[]).map((r) => (
+          <Chip key={r} label={ROLE_LABEL[r]} selected={role === r} onPress={() => setRole(r)} />
+        ))}
+      </Row>
+      {role === 'caregiver' ? (
+        <Row gap={20}>
+          {PERMS.map((p) => (
+            <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Switch
+                accessibilityLabel={p.label}
+                value={perms[p.key]}
+                onValueChange={(v) => setPerms({ ...perms, [p.key]: v })}
+                trackColor={{ true: color.accent, false: color.border }}
+                thumbColor="#fff"
+                {...({ activeThumbColor: '#fff' } as object)}
+              />
+              <Text style={t.body}>{p.label}</Text>
+            </View>
+          ))}
+        </Row>
+      ) : null}
+      <ErrorText>{error}</ErrorText>
+      <Pill label="Create invite code" onPress={create} busy={busy} />
+    </Panel>
+  );
+}
+
+function PendingInvites({ familyId }: { familyId: string }) {
+  const invites = useLive<Invite>('invites', familyId, () =>
+    supabase!.from('invites').select('*').eq('family_id', familyId).is('accepted_at', null).order('created_at', { ascending: false })
+  );
+  const live = invites.rows.filter((i) => new Date(i.expires_at) > new Date());
+
+  async function revoke(id: string) {
+    await supabase?.from('invites').delete().eq('id', id);
+    await invites.refresh();
+  }
+
+  return (
+    <>
+      {live.map((i) => {
+        const days = Math.max(1, Math.ceil((new Date(i.expires_at).getTime() - Date.now()) / 86_400_000));
+        const perms = i.role === 'caregiver' ? PERMS.filter((p) => i[p.key]).map((p) => p.label.toLowerCase()).join(', ') || 'view only' : ROLE_LABEL[i.role].toLowerCase();
+        return (
+          <View key={i.id} style={styles.pending}>
+            <View style={{ flex: 1, minWidth: 200, gap: 2 }}>
+              <Text style={styles.name}>Pending · code {i.code}</Text>
+              <Text style={t.muted}>
+                {perms} · expires in {days} {days === 1 ? 'day' : 'days'}
+              </Text>
+            </View>
+            <Text style={styles.link} onPress={() => revoke(i.id)}>
+              Revoke
+            </Text>
+          </View>
+        );
+      })}
+    </>
+  );
+}
+
+function MyContact({ familyId, me, email, onChange, onSignOut }: { familyId: string; me: Member; email?: string; onChange: () => Promise<void>; onSignOut: () => void }) {
   const [name, setName] = useState(me.display_name);
   const [phone, setPhone] = useState(me.phone ?? '');
   const [busy, setBusy] = useState(false);
@@ -190,11 +296,7 @@ function MyContact({
     setBusy(true);
     setError(null);
     setSaved(false);
-    const { error } = await supabase.rpc('update_my_contact', {
-      in_family: familyId,
-      new_name: name.trim(),
-      new_phone: phone.trim() || null,
-    });
+    const { error } = await supabase.rpc('update_my_contact', { in_family: familyId, new_name: name.trim(), new_phone: phone.trim() || null });
     setBusy(false);
     if (error) setError(error.message.includes('phone') ? 'Use digits only, e.g. +84 905 123 456.' : error.message);
     else {
@@ -203,80 +305,21 @@ function MyContact({
     }
   }
 
+  const dirty = name.trim() !== me.display_name || (phone.trim() || null) !== me.phone;
+
   return (
-    <Card>
-      <Heading>Your details</Heading>
-      <Small>Signed in as {email}. Your phone number is what the parent's "Call my children" button dials.</Small>
+    <Panel title="Your details" style={{ height: '100%' }}>
+      <Text style={t.muted}>{email ? `Signed in as ${email}. ` : ''}Your phone is what the parent&apos;s &quot;Call my children&quot; button dials.</Text>
       <Field label="Name" value={name} onChangeText={setName} />
       <Field label="Phone" value={phone} onChangeText={setPhone} inputMode="tel" placeholder="+84 905 123 456" />
       <ErrorText>{error}</ErrorText>
-      {saved ? <Small tone="green">Saved.</Small> : null}
+      {saved && !dirty ? <Text style={[t.muted, { color: color.green }]}>Saved.</Text> : null}
+      {dirty ? <Text style={[t.muted, { color: color.amberStrong }]}>Not saved yet.</Text> : null}
       <Row>
-        <Button label="Save" onPress={save} busy={busy} disabled={!name.trim()} />
+        <Pill label="Save" onPress={save} busy={busy} disabled={!name.trim() || !dirty} />
+        <Pill variant="outline" label="Sign out" onPress={onSignOut} />
       </Row>
-    </Card>
-  );
-}
-
-function Invites({ familyId }: { familyId: string }) {
-  const [role, setRole] = useState<Role>('caregiver');
-  const [perms, setPerms] = useState({ can_order: false, can_book: false, can_health: false });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const invites = useLive<Invite>('invites', familyId, () =>
-    supabase!.from('invites').select('*').eq('family_id', familyId).is('accepted_at', null).order('created_at', { ascending: false })
-  );
-
-  async function create() {
-    if (!supabase) return;
-    setBusy(true);
-    setError(null);
-    const p = role === 'caregiver' ? perms : { can_order: false, can_book: false, can_health: false };
-    const { error } = await supabase.from('invites').insert({ family_id: familyId, role, ...p });
-    setBusy(false);
-    if (error) setError(error.message);
-    await invites.refresh();
-  }
-
-  async function revoke(id: string) {
-    await supabase?.from('invites').delete().eq('id', id);
-    await invites.refresh();
-  }
-
-  const live = invites.rows.filter((i) => new Date(i.expires_at) > new Date());
-
-  return (
-    <Card>
-      <Heading>Invite someone</Heading>
-      <Small>They sign in to Tend with their email, then enter the code. Codes work once and expire in 7 days.</Small>
-      <Row>
-        {(['caregiver', 'viewer', 'owner'] as Role[]).map((r) => (
-          <Chip key={r} label={r} selected={role === r} onPress={() => setRole(r)} />
-        ))}
-      </Row>
-      {role === 'caregiver' ? (
-        <Row gap={space.md}>
-          {PERMS.map((p) => (
-            <Toggle key={p.key} label={p.label} value={perms[p.key]} onChange={(v) => setPerms({ ...perms, [p.key]: v })} />
-          ))}
-        </Row>
-      ) : null}
-      <ErrorText>{error}</ErrorText>
-      <Row>
-        <Button label="Create invite code" onPress={create} busy={busy} />
-      </Row>
-      {live.map((i) => (
-        <View key={i.id} style={{ gap: space.sm }}>
-          <CodeBox
-            code={i.code}
-            caption={`${i.role}${i.role === 'caregiver' ? ` · ${PERMS.filter((p) => i[p.key]).map((p) => p.label).join(', ') || 'view only'}` : ''} · expires ${new Date(i.expires_at).toLocaleDateString('en-GB')}`}
-          />
-          <Row>
-            <Button variant="secondary" label="Revoke" onPress={() => revoke(i.id)} />
-          </Row>
-        </View>
-      ))}
-    </Card>
+    </Panel>
   );
 }
 
@@ -289,7 +332,8 @@ function ParentPhone({ parentId, parentName }: { parentId: string; parentName: s
   // parent_devices has no family_id column, so it is loaded by parent and
   // refreshed by hand (after pairing on the phone, tap Refresh).
   const load = useCallback(async () => {
-    const { data } = await supabase!.from('parent_devices').select('*').eq('parent_id', parentId).order('paired_at');
+    if (!supabase) return;
+    const { data } = await supabase.from('parent_devices').select('*').eq('parent_id', parentId).order('paired_at');
     setList((data ?? []) as ParentDevice[]);
   }, [parentId]);
 
@@ -313,26 +357,50 @@ function ParentPhone({ parentId, parentName }: { parentId: string; parentName: s
   }
 
   return (
-    <Card>
-      <Heading>{parentName}'s phone</Heading>
-      <Small>
-        Parent mode needs no account. On {parentName}'s phone, open Tend, tap "Set up this phone for my parent" and enter the
-        code. Codes last 15 minutes and work once.
-      </Small>
+    <Panel title={`${parentName}'s phone`} style={{ height: '100%' }}>
+      <Text style={t.muted}>
+        Parent mode needs no account. On {parentName}&apos;s phone, open Tend, tap &quot;Set up this phone for my parent&quot; and enter the code. Codes last 15 minutes and work once.
+      </Text>
       {list.map((d) => (
-        <Spread key={d.user_id}>
-          <Body>
+        <View key={d.user_id} style={styles.consentRow}>
+          <Text style={t.body}>
             {d.label || 'Phone'} · paired {new Date(d.paired_at).toLocaleDateString('en-GB')}
-          </Body>
-          <Button variant="secondary" label="Unpair" onPress={() => unpair(d.user_id)} />
-        </Spread>
+          </Text>
+          <Text style={styles.link} onPress={() => unpair(d.user_id)}>
+            Unpair
+          </Text>
+        </View>
       ))}
       {code ? <CodeBox code={code} caption="Valid for 15 minutes" /> : null}
       <ErrorText>{error}</ErrorText>
       <Row>
-        <Button label={code ? 'New code' : `Set up ${parentName}'s phone`} onPress={makeCode} busy={busy} />
-        <Button variant="secondary" label="Refresh" onPress={load} />
+        <Pill label={code ? 'New code' : list.length ? 'Pair another phone' : `Set up ${parentName}'s phone`} onPress={makeCode} busy={busy} />
+        <Pill variant="outline" label="Refresh" onPress={load} />
       </Row>
-    </Card>
+    </Panel>
   );
 }
+
+const styles = StyleSheet.create({
+  table: { backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: 16, overflow: 'hidden' },
+  thead: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 12, backgroundColor: '#FAFBFB', borderBottomWidth: 1, borderBottomColor: color.line },
+  th: { fontFamily: font.bold, fontSize: 13, color: color.inkMuted },
+  cell: { width: 76, alignItems: 'center', textAlign: 'center' },
+  row: { borderBottomWidth: 1, borderBottomColor: color.surfaceMuted },
+  rowMain: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 14 },
+  who: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 },
+  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: font.bold, fontSize: 15, color: color.accentStrong },
+  name: { fontFamily: font.bold, fontSize: 15.5, color: color.ink },
+  drawer: { paddingHorizontal: 20, paddingBottom: 16, paddingLeft: 70, gap: 10 },
+  pending: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, backgroundColor: color.surface, borderWidth: 1, borderStyle: 'dashed', borderColor: '#B9C4C0', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16 },
+  link: { fontFamily: font.bold, fontSize: 14, color: color.accent },
+  kicker: { fontFamily: font.bold, fontSize: 13, color: color.accent, textTransform: 'uppercase', letterSpacing: 0.8 },
+  asideTitle: { fontFamily: font.bold, fontSize: 22, lineHeight: 27, color: color.ink },
+  consentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: color.surfaceMuted },
+  state: { fontFamily: font.bold, fontSize: 13, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, overflow: 'hidden' },
+  shared: { backgroundColor: color.greenSoft, color: color.green },
+  notShared: { backgroundColor: color.surfaceMuted, color: color.inkMuted },
+  policy: { marginTop: 'auto', backgroundColor: color.bg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  code: { fontFamily: 'monospace', fontSize: 12.5, lineHeight: 20, color: '#3B4744' },
+});

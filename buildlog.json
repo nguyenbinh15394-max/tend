@@ -1,10 +1,10 @@
 {
-  "status": "Data & RLS live · building 3 flows",
+  "status": "Caregiver web matches the hi-fi · 5 modules live",
   "phases": [
     { "state": "Done", "name": "Framing", "note": "Problem, personas, principles, scope" },
     { "state": "Done", "name": "Hi-fi UI", "note": "6 caregiver + 9 parent screens" },
     { "state": "Done", "name": "Data & RLS", "note": "Supabase schema, family permissions" },
-    { "state": "Now", "name": "Build", "note": "3 flows with Claude Code" },
+    { "state": "Now", "name": "Build", "note": "5 caregiver modules live, parent mode next" },
     { "state": "Planned", "name": "Test & ship", "note": "5 families, live demo" }
   ]
 }
