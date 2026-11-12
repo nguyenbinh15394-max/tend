@@ -1,0 +1,18 @@
+# Netlify: static web build of the Expo app (same as vercel.json).
+[build]
+  command = "npx expo export -p web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Single-page app: every path (/supplies, /pair, …) serves index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/_expo/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

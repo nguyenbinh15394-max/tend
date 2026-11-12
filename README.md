@@ -60,9 +60,9 @@ Never commit `.env` or the `service_role` key.
 
 ## Deploy (web)
 
-The web build is a static single-page app, so any static host works. This repo is set up for Vercel ([`vercel.json`](vercel.json)):
+The web build is a static single-page app, so any static host works. The live demo runs on Netlify ([`netlify.toml`](netlify.toml)); [`vercel.json`](vercel.json) does the same for Vercel.
 
-1. Import the GitHub repo in Vercel. The build command, output folder and SPA rewrites come from `vercel.json`.
+1. Import the GitHub repo in Netlify (or Vercel). The build command, output folder and SPA rewrites come from the config file.
 2. Add two environment variables: `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` (the publishable key). They are baked into the public bundle, so never use the secret / `service_role` key; the app refuses to start with one.
 3. In Supabase, **Authentication → URL Configuration**: set Site URL to the deployed URL and add `https://<your-domain>/**` to Redirect URLs.
 4. For people outside your Supabase organization to receive sign-in emails, set up custom SMTP (**Authentication → Emails → Set up SMTP**).
