@@ -1,10 +1,10 @@
 {
-  "status": "Hi-fi done · building data & RLS",
+  "status": "Data & RLS live · building 3 flows",
   "phases": [
     { "state": "Done", "name": "Framing", "note": "Problem, personas, principles, scope" },
     { "state": "Done", "name": "Hi-fi UI", "note": "6 caregiver + 9 parent screens" },
-    { "state": "Now", "name": "Data & RLS", "note": "Supabase schema, family permissions" },
-    { "state": "Planned", "name": "Build", "note": "3 flows with Claude Code" },
+    { "state": "Done", "name": "Data & RLS", "note": "Supabase schema, family permissions" },
+    { "state": "Now", "name": "Build", "note": "3 flows with Claude Code" },
     { "state": "Planned", "name": "Test & ship", "note": "5 families, live demo" }
   ]
 }
