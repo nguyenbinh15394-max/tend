@@ -5,6 +5,23 @@ import { AppState, Platform } from 'react-native';
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+// EXPO_PUBLIC_ values are bundled into the app for anyone to read. A secret /
+// service_role key there would bypass every RLS policy, so refuse to start.
+if (anonKey && (anonKey.startsWith('sb_secret_') || /service_role/.test(decodeJwtRole(anonKey)))) {
+  throw new Error(
+    'EXPO_PUBLIC_SUPABASE_ANON_KEY is a secret key. Use the publishable (anon) key from Project Settings → API Keys.'
+  );
+}
+
+function decodeJwtRole(key: string) {
+  try {
+    const payload = key.split('.')[1];
+    return payload ? (JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))).role ?? '') : '';
+  } catch {
+    return '';
+  }
+}
+
 /**
  * The Supabase client, or null until `.env` has the project URL and anon key
  * (the app then shows a setup screen instead of crashing).
@@ -19,7 +36,9 @@ export const supabase =
           storage: AsyncStorage,
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: false,
+          // Caregivers sign in with an email magic link; on web the link
+          // lands back on the app with the session in the URL.
+          detectSessionInUrl: Platform.OS === 'web',
           lock: processLock,
         },
       })
