@@ -51,6 +51,12 @@ export type Supply = {
   next_due: string; // yyyy-mm-dd
   owner_member_id: string | null;
   last_ordered_at: string | null;
+  price_vnd: number | null;
+  pack_size: number | null;
+  per_day: number | null;
+  paid_by_member_id: string | null;
+  deliver_to: string | null;
+  paused: boolean;
 };
 
 export type AppointmentStatus = 'scheduled' | 'done' | 'cancelled';
@@ -68,5 +74,38 @@ export type Appointment = {
   driver_member_id: string | null;
 };
 
-export const can = (m: Member | null, p: Permission) =>
+export type Reading = {
+  id: string;
+  family_id: string;
+  parent_id: string;
+  kind: 'blood_pressure' | 'glucose' | 'weight' | 'heart_rate' | 'temperature';
+  value: number;
+  value_secondary: number | null;
+  unit: string;
+  taken_at: string;
+  source: 'parent' | 'caregiver';
+  recorded_by: string | null;
+  note: string | null;
+};
+
+export type Medicine = {
+  id: string;
+  family_id: string;
+  parent_id: string;
+  name: string;
+  instructions: string | null;
+  times: string[]; // 'HH:MM:SS'
+  active: boolean;
+};
+
+export type Dose = {
+  id: string;
+  family_id: string;
+  parent_id: string;
+  medicine_id: string;
+  scheduled_for: string;
+  taken_at: string;
+};
+
+export const can =(m: Member | null, p: Permission) =>
   !!m && (m.role === 'owner' || (p === 'order' ? m.can_order : p === 'book' ? m.can_book : m.can_health));
