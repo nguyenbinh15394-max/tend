@@ -1,12 +1,12 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Calendar, Phone, Pill } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigAction, TodayCard } from '@/components/parent';
+import { useCallList, useParentRecord } from '@/lib/parent-data';
 import { greeting, longDate, parentStrings, type ParentLang } from '@/lib/parent-strings';
-import { useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import { color, font, parent, space } from '@/theme/tokens';
 
@@ -17,32 +17,30 @@ const lang: ParentLang = 'vi';
  * Today's medicines · Next check-up · Call my children.
  */
 export default function ParentHome() {
-  const { parentId } = useSession();
   const t = parentStrings(lang);
-  const [name, setName] = useState<string | null>(null);
+  const { parent: me, loading } = useParentRecord();
+  const callList = useCallList();
   const [nextVisit, setNextVisit] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (!supabase || !parentId) return;
-    supabase
-      .from('parents')
-      .select('display_name')
-      .eq('id', parentId)
-      .single()
-      .then(({ data }) => setName(data?.display_name ?? null));
+    if (!supabase || !me) return;
     supabase
       .from('appointments')
       .select('starts_at')
-      .eq('parent_id', parentId)
+      .eq('parent_id', me.id)
       .eq('status', 'scheduled')
       .gte('starts_at', new Date().toISOString())
       .order('starts_at')
       .limit(1)
       .maybeSingle()
       .then(({ data }) => setNextVisit(data ? new Date(data.starts_at) : null));
-  }, [parentId]);
+  }, [me]);
+
+  // First time on this phone: the parent chooses what to share (hi-fi 2f).
+  if (!loading && me && !me.consent_updated_at) return <Redirect href="/parent/consent" />;
 
   const today = nextVisit ? visitSummary(nextVisit) : null;
+  const names = callList.map((c) => c.display_name);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -50,7 +48,7 @@ export default function ParentHome() {
         <View>
           <Text style={styles.date}>{longDate(lang)}</Text>
           <Text accessibilityRole="header" style={styles.hello}>
-            {name ? `${greeting(lang)}, ${name}` : greeting(lang)}
+            {me ? `${greeting(lang)}, ${me.display_name}` : greeting(lang)}
           </Text>
         </View>
 
@@ -61,7 +59,16 @@ export default function ParentHome() {
 
         <View style={styles.spacer} />
 
-        <BigAction tone="urgent" icon={Phone} label={t.call} onPress={() => router.push('/parent/call')} />
+        <BigAction
+          tone="urgent"
+          icon={Phone}
+          label={t.call}
+          sub={names.length ? t.callThen(names) : undefined}
+          onPress={() => router.push('/parent/call')}
+        />
+        <Pressable accessibilityRole="button" onPress={() => router.push('/parent/consent')} style={styles.sharing}>
+          <Text style={styles.sharingText}>{t.sharing}</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -89,7 +96,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: space.lg,
     paddingTop: 14,
-    paddingBottom: space.lg,
+    paddingBottom: space.sm,
     gap: space.md,
   },
   date: { fontFamily: font.regular, fontSize: parent.small, color: color.inkMuted },
@@ -101,4 +108,6 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
   },
   spacer: { flex: 1 },
+  sharing: { minHeight: 64, alignItems: 'center', justifyContent: 'center' },
+  sharingText: { fontFamily: font.regular, fontSize: parent.small, color: color.inkMuted, textDecorationLine: 'underline' },
 });

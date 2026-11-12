@@ -294,6 +294,8 @@ select tests.ok((select count(*) from public.doses) = 1, 'Mum taps "I''ve taken 
 select tests.ok((select display_name from public.my_call_list() limit 1) = 'Anna',
   '"Call my children" starts with Anna');
 select tests.ok((select count(*) from public.my_call_list()) = 2, 'the call list has Anna, then Ben');
+select tests.ok((select count(*) from public.my_family_names()) = 3,
+  'Mum''s phone sees the names in her circle (to show who drives her)');
 select tests.ok((select count(*) from public.members) = 0,
   'Mum''s phone cannot read the circle''s roles and permissions');
 select tests.refused($$select public.set_consent('supplies', false)$$, 'supplies are not a consent setting');
@@ -320,6 +322,7 @@ reset role;
 select tests.login('00000000-0000-0000-0000-0000000000f2', true);
 set role authenticated;
 select tests.ok((select count(*) from public.my_call_list()) = 0, 'an unpaired phone gets no call list');
+select tests.ok((select count(*) from public.my_family_names()) = 0, 'an unpaired phone gets no names');
 reset role;
 
 -- A stranger's phone ---------------------------------------------------------------------
