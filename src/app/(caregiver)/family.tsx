@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Chip, CodeBox, Row } from '@/components/kit';
-import { Grid, Page, PageHeader, Panel, Pill, t } from '@/components/layout';
+import { Grid, Page, PageHeader, Panel, Pill, t, useWide } from '@/components/layout';
 import { ErrorText, Field } from '@/components/ui';
 import { useFamily, useLive } from '@/lib/family';
 import { useSession } from '@/lib/session';
@@ -31,6 +31,7 @@ export default function Family() {
   const { signOut, session } = useSession();
   const [inviting, setInviting] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const roomy = useWide(640);
   const isOwner = me?.role === 'owner';
   const canManage = me?.role === 'owner' || me?.role === 'caregiver';
 
@@ -47,7 +48,7 @@ export default function Family() {
       {inviting ? <InviteForm familyId={family.id} onDone={() => setInviting(false)} /> : null}
 
       <View style={styles.table}>
-        <View style={styles.thead}>
+        <View style={[styles.thead, !roomy && { display: 'none' }]}>
           <Text style={[styles.th, { flex: 1 }]}>Member</Text>
           {['Order', 'Book', 'Health', 'Admin'].map((h) => (
             <Text key={h} style={[styles.th, styles.cell]}>
@@ -61,6 +62,7 @@ export default function Family() {
             member={m}
             isMe={m.id === me.id}
             editable={isOwner && m.id !== me.id}
+            roomy={roomy}
             open={open === m.id}
             onToggle={() => setOpen(open === m.id ? null : m.id)}
             onChange={reload}
@@ -105,6 +107,7 @@ function MemberRow({
   member: m,
   isMe,
   editable,
+  roomy,
   open,
   onToggle,
   onChange,
@@ -112,6 +115,7 @@ function MemberRow({
   member: Member;
   isMe: boolean;
   editable: boolean;
+  roomy: boolean;
   open: boolean;
   onToggle: () => void;
   onChange: () => Promise<void>;
@@ -137,6 +141,37 @@ function MemberRow({
   const setRole = (role: Role) => update(role === 'viewer' ? { role, can_order: false, can_book: false, can_health: false } : { role });
   const sub = [ROLE_LABEL[m.role], m.phone, m.call_order ? `called #${m.call_order}` : null].filter(Boolean).join(' · ');
 
+  const switches = (
+    <>
+        {PERMS.map((p) => (
+          <View key={p.key} style={styles.cell}>
+            <Switch
+              accessibilityLabel={`${m.display_name} can ${p.label.toLowerCase()}`}
+              value={owner || m[p.key]}
+              disabled={!editable || owner || m.role === 'viewer'}
+              onValueChange={(v) => update({ [p.key]: v })}
+              trackColor={{ true: color.accent, false: color.border }}
+              thumbColor="#fff"
+              {...({ activeThumbColor: '#fff' } as object)}
+            />
+            {!roomy ? <Text style={styles.permLabel}>{p.label}</Text> : null}
+          </View>
+        ))}
+        <View style={styles.cell}>
+          <Switch
+            accessibilityLabel={`${m.display_name} is an owner`}
+            value={owner}
+            disabled={!editable}
+            onValueChange={(v) => setRole(v ? 'owner' : 'caregiver')}
+            trackColor={{ true: color.accent, false: color.border }}
+            thumbColor="#fff"
+            {...({ activeThumbColor: '#fff' } as object)}
+          />
+          {!roomy ? <Text style={styles.permLabel}>Admin</Text> : null}
+        </View>
+    </>
+  );
+
   return (
     <View style={styles.row}>
       <View style={styles.rowMain}>
@@ -154,34 +189,12 @@ function MemberRow({
             </Text>
           </View>
         </Pressable>
-        {PERMS.map((p) => (
-          <View key={p.key} style={styles.cell}>
-            <Switch
-              accessibilityLabel={`${m.display_name} can ${p.label.toLowerCase()}`}
-              value={owner || m[p.key]}
-              disabled={!editable || owner || m.role === 'viewer'}
-              onValueChange={(v) => update({ [p.key]: v })}
-              trackColor={{ true: color.accent, false: color.border }}
-              thumbColor="#fff"
-              {...({ activeThumbColor: '#fff' } as object)}
-            />
-          </View>
-        ))}
-        <View style={styles.cell}>
-          <Switch
-            accessibilityLabel={`${m.display_name} is an owner`}
-            value={owner}
-            disabled={!editable}
-            onValueChange={(v) => setRole(v ? 'owner' : 'caregiver')}
-            trackColor={{ true: color.accent, false: color.border }}
-            thumbColor="#fff"
-            {...({ activeThumbColor: '#fff' } as object)}
-          />
-        </View>
+        {roomy ? switches : null}
       </View>
+      {!roomy ? <View style={styles.permsNarrow}>{switches}</View> : null}
 
       {open && editable ? (
-        <View style={styles.drawer}>
+        <View style={[styles.drawer, !roomy && { paddingLeft: 20 }]}>
           <Row>
             <Text style={t.muted}>Role</Text>
             {(['caregiver', 'viewer'] as Role[]).map((r) => (
@@ -392,6 +405,8 @@ const styles = StyleSheet.create({
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontFamily: font.bold, fontSize: 15, color: color.accentStrong },
   name: { fontFamily: font.bold, fontSize: 15.5, color: color.ink },
+  permsNarrow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 14 },
+  permLabel: { fontFamily: font.regular, fontSize: 12.5, color: color.inkMuted, marginTop: 4 },
   drawer: { paddingHorizontal: 20, paddingBottom: 16, paddingLeft: 70, gap: 10 },
   pending: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, backgroundColor: color.surface, borderWidth: 1, borderStyle: 'dashed', borderColor: '#B9C4C0', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16 },
   link: { fontFamily: font.bold, fontSize: 14, color: color.accent },
