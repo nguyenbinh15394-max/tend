@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { useFixture } from './fixtures';
 import { useSession } from './session';
 import { supabase } from './supabase';
 import type { Family, Member, Parent } from './types';
@@ -18,7 +19,8 @@ type FamilyState = {
   reload: () => Promise<void>;
 };
 
-const FamilyContext = createContext<FamilyState | null>(null);
+/** Exported so a design preview can provide sample data (see fixtures.tsx). */
+export const FamilyContext = createContext<FamilyState | null>(null);
 
 export function FamilyProvider({ children }: { children: ReactNode }) {
   const { session } = useSession();
@@ -96,11 +98,12 @@ export function useLive<T>(
   load: () => PromiseLike<{ data: T[] | null }>,
   deps: unknown[] = []
 ) {
+  const fixture = useFixture<T>(table);
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!familyId) return;
+    if (!familyId || fixture) return;
     const { data } = await load();
     setRows(data ?? []);
     setLoading(false);
@@ -112,7 +115,7 @@ export function useLive<T>(
   }, [refresh]);
 
   useEffect(() => {
-    if (!supabase || !familyId) return;
+    if (!supabase || !familyId || fixture) return;
     const client = supabase;
     const channel = client
       .channel(`${table}-${familyId}-${Math.random().toString(36).slice(2)}`)
@@ -121,7 +124,8 @@ export function useLive<T>(
     return () => {
       client.removeChannel(channel);
     };
-  }, [table, familyId, refresh]);
+  }, [table, familyId, refresh, fixture]);
 
+  if (fixture) return { rows: fixture, loading: false, refresh: async () => {} };
   return { rows, loading, refresh };
 }
