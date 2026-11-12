@@ -76,6 +76,11 @@ select tests.ok(
   (select consent ->> 'health' from public.parents where id = current_setting('test.pid')::uuid) = 'false',
   'health sharing is off until the parent turns it on');
 
+select tests.refused(
+  $$insert into public.parents (family_id, display_name, consent)
+    values (current_setting('test.fid')::uuid, 'Dad', '{"medicines": true, "appointments": true, "health": true, "emergency_location": true}')$$,
+  'a caregiver cannot pre-set consent when adding a parent');
+
 with i as (
   insert into public.invites (family_id, role, can_order, can_book)
   values (current_setting('test.fid')::uuid, 'caregiver', true, true)

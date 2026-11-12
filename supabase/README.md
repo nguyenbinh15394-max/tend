@@ -8,6 +8,8 @@ Postgres schema and row-level security for Tend, as Supabase migrations.
 | `migrations/…_rls.sql` | Row-level security: each family sees only its own rows, writes need the matching permission, and the parent's consent is checked on every read and write |
 | `migrations/…_circle_and_pairing.sql` | `create_family`, invites + `accept_invite`, parent-phone pairing (`create_pairing_code`, `pair_device`), `set_consent`, Realtime |
 | `migrations/…_match_hifi.sql` | Matches the hi-fi: consent as asked on first setup, medicines + doses, phone numbers and call order (`my_call_list`, `update_my_contact`) |
+| `migrations/…_explicit_grants.sql` | Every table privilege the app needs, written out (the project does not expose new tables automatically). A caregiver can add a parent by name only, never with consent pre-set |
+| `config.toml` | Supabase CLI config for the local stack (anonymous sign-ins on) |
 | `seed.sql` | The hi-fi's demo family (Mr. Hòa, Linh, Nam, Mrs. Lan, Cousin Tú) for local development |
 | `tests/` | RLS tests that play the family story as real users |
 
@@ -30,15 +32,15 @@ npm run test:db
 
 ## Set up a Supabase project
 
-1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard). Keep the database password in a password manager.
+1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard). Keep the database password in a password manager. Under Security, keep the Data API on, turn **off** "Automatically expose new tables" (the grants migration covers it) and turn **on** "Enable automatic RLS".
 2. **Authentication → Sign In / Providers**: keep Email on, and turn on **Allow anonymous sign-ins** (parent mode uses it).
-   **Authentication → Emails → Magic Link**: caregivers sign in with a 6-digit code, so add `{{ .Token }}` to the template body (for example `Your Tend code is {{ .Token }}`).
+   **Authentication → URL Configuration**: set Site URL to where the caregiver app runs (`http://localhost:8081` while developing) and add it to Redirect URLs. Caregivers sign in with the default magic-link email, which sends them back there.
+   The default email sender only delivers to members of your Supabase organization, a few emails an hour. Inviting real families needs custom SMTP (Authentication → Emails → Set up SMTP).
 3. Apply the migrations from this folder:
    ```bash
    npx supabase login
-   npx supabase init        # adds supabase/config.toml, keeps the migrations
    npx supabase link --project-ref <your-project-ref>
-   npx supabase db push
+   npx supabase db push --remote
    ```
    `db push` does not run `seed.sql`, so the hosted database starts empty.
 4. **Project Settings → API**: copy the project URL and the anon / publishable key into `.env` (see `.env.example`). Never copy the `service_role` / secret key into this repo.

@@ -49,8 +49,8 @@ as $$ select nullif(auth.jwt() ->> 'sub', '')::uuid $$;
 
 grant execute on all functions in schema auth to anon, authenticated, service_role;
 
--- Supabase grants table access to these roles by default; RLS does the rest.
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+-- Like a Supabase project with "Automatically expose new tables" turned off:
+-- no default grants on new tables, and new functions are not executable by
+-- everyone. Every privilege the app needs must come from the migrations.
 grant usage on schema public to anon, authenticated, service_role;
+alter default privileges revoke execute on functions from public;
